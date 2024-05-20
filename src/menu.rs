@@ -1,5 +1,20 @@
 use console::Key;
 use console::Term;
+use crossterm::event::KeyCode;
+use crossterm::event::KeyEvent;
+use crossterm::queue;
+// use crossterm::style::Print;
+// use crossterm::style::PrintStyledContent;
+// use crossterm::style::SetAttribute;
+// use crossterm::style::SetColors;
+// use crossterm::style::SetForegroundColor;
+use crossterm::style::{Print,SetForegroundColor,SetBackgroundColor,Color};
+use crossterm::event::{poll, read, Event};
+use crossterm::terminal::Clear;
+use crossterm::{
+    ExecutableCommand, QueueableCommand,
+    terminal, cursor, style::{self, Stylize}
+};
 use std::fmt::format;
 use std::io;
 use std::io::stdout;
@@ -48,25 +63,38 @@ fn credentials(){
     // println!("{:^150}","All voiceover rights reserved by Anilibria team");
     // println!("{:^150}","Check out their website! https://anilibria.top");
     let mut out =  io::stdout().lock();
-    out.write_fmt(format_args!("{:-<60}\n",""));
+    out.write_fmt(format_args!("{:-<52}\n",""));
     out.write_fmt(format_args!("{:<120}\n","CLI anime episode parser"));
     out.write_fmt(format_args!("{:<120}\n","All voiceover rights reserved by Anilibria team"));
     out.write_fmt(format_args!("{:<120}\n","Check out their website! https://anilibria.top"));
-    out.write_fmt(format_args!("{:-<60}\n",""));
+    out.write_fmt(format_args!("{:-<52}\n",""));
     out.flush();
 
 }
 
 pub fn menu_draw_loop(mut selected_option: usize,mut term: &Term, options: &Vec<String>) -> usize {
-    term.clear_screen();
+    let mut stdout = stdout();
     credentials();
+    stdout.queue(Clear(terminal::ClearType::FromCursorDown));
+    
     loop {
         for i in 0..options.len() {
-            println!("{}", options[i]);
+            //println!("   {}", options[i]);
+            if i == selected_option {
+                queue!(stdout,
+                    SetForegroundColor(Color::Black),
+                    SetBackgroundColor(Color::White),
+                    Print(format_args!("{}\n",&options[i])),
+                    SetForegroundColor(Color::White),
+                    SetBackgroundColor(Color::Black),
+                ).unwrap();
+    
+            }else {
+                stdout.queue(Print(format_args!("{}\n",&options[i])));
+            }
         }
-        term.move_cursor_to(0, 5+selected_option);
-        //dbg!(selected_option);
-        term.write_fmt(format_args!("{}",">>"));
+        stdout.flush();
+
         match term.read_key() {
             Ok(key) => match key {
                 Key::ArrowDown => {
@@ -89,6 +117,16 @@ pub fn menu_draw_loop(mut selected_option: usize,mut term: &Term, options: &Vec<
             },
             Err(_) => break,
         }
+            // match  read().unwrap() {
+            //     Event::Key(KeyCode::Down.into())=>{ }
+                
+            // }
+
+
+
+
+
+
         term.move_cursor_to(0, 5);
     }
     return selected_option;
@@ -130,7 +168,7 @@ pub fn menu_provider(menu_type: MenuType) -> MenuNode {
 fn fetch_release_list() -> Vec<Title> {
     println!("Fetching releases");
     let resp = reqwest::blocking::get(
-        "https://api.anilibria.tv/v3/title/updates?filter=names,player,list,id&since=1715094161&limit=-1",
+        "https://api.anilibria.tv/v3/title/updates?filter=names,player,list,id&limit=10",
     )
     .expect("msg")
     .text()
@@ -149,7 +187,9 @@ fn chose_releases(term:&Term)->MenuType{
     let titles = fetch_release_list();
     let mut out_handle = io::stdout().lock();
     for i in 0..titles.len(){
-        out_handle.write_fmt(format_args!("{}. {}\n",i,titles[i].names.ru)).expect("write error");
+        out_handle.write_fmt(format_args!("{}. {} [{}]\n",
+            i,titles[i].names.ru,
+            titles[i].player["episodes"]["string"])).expect("write error");
     }
     let mut input = String::new();
     io::stdout().write(b"Enter the release number: ").expect("input error");
@@ -181,20 +221,28 @@ fn search_logic(term:&Term)->MenuType{
 //TODO:debug interaction logic 
 fn watch_title(title:&Title){
     let mut out_handle = io::stdout().lock();
-    let mut episode = String::new();
+    let mut inputEpisode = String::new();
     loop {
         out_handle.write_fmt(format_args!("{esc}[2J{esc}[1;1H", esc = 27 as char));
         out_handle.flush();
-        out_handle.write_fmt(format_args!("Enter episode [{}-{}]: ",1,2));
+        out_handle.write_fmt(format_args!("Enter episode {}: ",title.player["episodes"]["string"]));
         out_handle.flush();
-        io::stdin().read_line(&mut episode);
-        let episode = title.player["list"][episode.trim()]["hls"]["hd"].as_str().expect("error parsing json");
-        let url =  format!("https://cache.libria.fun{episode}");
-        
-        let output = Command::new("C:\\Program Files\\KMPlayer 64X\\KMPlayer64.exe")
+        io::stdin().read_line(&mut inputEpisode);
+        let mut episode = title.player["list"][inputEpisode.trim()]["hls"]["fhd"].as_str().expect("error parsing json");
+        let mut url =  format!("https://cache.libria.fun{episode}");
+        //let output = Command::new("C:\\Program Files\\KMPlayer 64X\\KMPlayer64.exe")
+        //let output = Command::new("C:\\Program Files\\KMPlayer 64X\\KMPlayer64.exe")
+        let output = Command::new("player/AniPlayer.exe")
+        //let output = Command::new("mpv")
+            //.arg("--profile=low-latency")
+            // --hwdec=auto-safe
+          //  .arg("--cache-secs=60")
+           // .arg("--hwdec=auto-safe")
             .arg(url)
             .output()
-            .expect("player");    
+            .expect("player");
+        inputEpisode.clear();
+    
     }
     
     

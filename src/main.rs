@@ -3,7 +3,6 @@
 #![allow(unused_imports)]
 use console::style;
 use console::Term;
-use menu;
 use menu::menu_provider;
 use menu::MenuNode;
 use menu::MenuType;
