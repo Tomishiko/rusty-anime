@@ -7,6 +7,7 @@ use menu::menu_provider;
 use menu::MenuNode;
 use menu::MenuType;
 use menu::NavType;
+use menu::App;
 use reqwest;
 use std::env;
 use std::env::current_exe;
@@ -26,15 +27,18 @@ fn main() {
     term.hide_cursor();
     //credentials();
     //term.read_char();
+    let mut app = App::new();
+
     let mut current = menu_provider(MenuType::Main);
-    let mut menu_stack:Vec<MenuNode> = Vec::new();
+    //app.menu_stack.push(current);
+    //let mut menu_stack:Vec<MenuNode> = Vec::new();
     loop{
-        let next = (current.action)(&term);
+        let next = (current.action)(&mut app);
         if matches!(next,MenuType::Back) {
-            current = menu_stack.pop().expect("msg");
+            current = app.menu_stack.pop().expect("msg");
         }
         else {
-            menu_stack.push(current);
+            app.menu_stack.push(current);
             current = menu_provider(next);
                 
         }
