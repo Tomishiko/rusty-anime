@@ -1,8 +1,11 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-use console::style;
-use console::Term;
+use crossterm::cursor;
+use crossterm::execute;
+use crossterm::queue;
+use crossterm::terminal;
+use crossterm::QueueableCommand;
 use menu::menu_provider;
 use menu::MenuNode;
 use menu::MenuType;
@@ -12,6 +15,7 @@ use reqwest;
 use std::env;
 use std::env::current_exe;
 use std::io;
+use std::io::stdout;
 use std::io::Read;
 use std::io::Write;
 use std::option;
@@ -23,8 +27,8 @@ fn main() {
     // if args.len() != 1{
     //     parse_arguments(&args);
     // }
-    let mut term: Term = Term::stdout();
-    term.hide_cursor();
+    execute!(io::stdout(),terminal::EnterAlternateScreen);
+    
     //credentials();
     //term.read_char();
     let mut app = App::new();
@@ -35,6 +39,10 @@ fn main() {
     loop{
         let next = (current.action)(&mut app);
         if matches!(next,MenuType::Back) {
+            if(app.menu_stack.len()==0){
+                break;
+            }
+                
             current = app.menu_stack.pop().expect("msg");
         }
         else {
@@ -45,7 +53,8 @@ fn main() {
         
         
     }
-    term.read_char();
+    execute!(io::stdout(),terminal::LeaveAlternateScreen);
+
 }
 fn navigator() {}
 fn search_logic() {}
