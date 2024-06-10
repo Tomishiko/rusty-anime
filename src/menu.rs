@@ -1,3 +1,4 @@
+use console::colors_enabled_stderr;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
@@ -168,27 +169,50 @@ impl App {
         io::stdout()
             .write(b"Enter the release number: ")
             .expect("input error");
+        let start_position = cursor::position().unwrap();
         out_handle.queue(crossterm::cursor::Show);
         out_handle.flush();
         let mut esc_flag = false;
         io::stdout().flush();
-
-        while let Event::Key(KeyEvent { code, .. }) = read().unwrap() {
-            match code {
-                KeyCode::Enter => {
-                    dbg!(&input);
-                    break;
-                }
-                KeyCode::Char(c) => {
-                    input.push(c);
-                }
-                KeyCode::Esc => {
-                    esc_flag=true;
-                    break;
-                }
-                _ => {}
-            }
-        }
+        self.out_handle.execute(cursor::EnableBlinking);
+        io::stdin().read_line(&mut input);
+        // loop {
+        //     let event=  read().unwrap();
+        //     if event == Event::Key(KeyCode::Esc.into()){
+        //         return MenuType::Back;
+        //     }
+        //     match event {
+        //         Event::Key(KeyEvent { 
+        //             code:KeyCode::Enter,
+        //             kind:KeyEventKind::Press,
+        //             ..
+        //         })=>{
+        //             if input.len()!=0 { break; }
+        //         }
+        //         Event::Key(KeyEvent { 
+        //             code:KeyCode::Char(c),
+        //             kind:KeyEventKind::Press,
+        //             ..
+        //         })=>{
+        //             input.push(c);
+        //             self.out_handle.execute(Print(c));
+        //         }
+        //         Event::Key(KeyEvent { 
+        //             code:KeyCode::Backspace,
+        //             kind:KeyEventKind::Press,
+        //             ..
+        //         })=>{
+        //             if cursor::position().unwrap() != start_position{
+        //                 input.pop();
+        //                 queue!(self.out_handle,
+        //                     Print("\u{8} \u{8}"),);
+        //                 self.out_handle.flush();
+        //             }
+                    
+        //         }
+        //         _ => {}
+        //     }
+        // }
     
 
 

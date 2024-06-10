@@ -32,7 +32,7 @@ fn main() {
     //credentials();
     //term.read_char();
     let mut app = App::new();
-
+    //crossterm::terminal::enable_raw_mode();
     let mut current = menu_provider(MenuType::Main);
     //app.menu_stack.push(current);
     //let mut menu_stack:Vec<MenuNode> = Vec::new();
@@ -53,6 +53,7 @@ fn main() {
         
         
     }
+    //crossterm::terminal::disable_raw_mode();
     execute!(io::stdout(),terminal::LeaveAlternateScreen);
 
 }
