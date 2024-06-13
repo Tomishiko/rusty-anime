@@ -27,10 +27,10 @@ fn main() {
     // if args.len() != 1{
     //     parse_arguments(&args);
     // }
-    execute!(io::stdout(),
-            terminal::EnterAlternateScreen,
-            terminal::DisableLineWrap);
-    terminal::enable_raw_mode();
+    // execute!(io::stdout(),
+    //         terminal::EnterAlternateScreen,
+    //         terminal::DisableLineWrap);
+    //terminal::enable_raw_mode();
     
     //credentials();
     //term.read_char();
@@ -58,10 +58,10 @@ fn main() {
         
     }
     //crossterm::terminal::disable_raw_mode();
-    execute!(io::stdout(),
-            terminal::LeaveAlternateScreen,
-            terminal::EnableLineWrap);
-    terminal::disable_raw_mode();
+    // execute!(io::stdout(),
+    //         terminal::LeaveAlternateScreen,
+    //         terminal::EnableLineWrap);
+    //terminal::disable_raw_mode();
 
 }
 fn navigator() {}

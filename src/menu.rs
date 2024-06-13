@@ -20,6 +20,7 @@ use reqwest::Client;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::fmt::format;
 use std::io;
 use std::io::stdin;
 use std::io::stdout;
@@ -32,7 +33,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 //####################################################### Data types
-
+const API_HOST:&str = "https://api.anilibria.tv/v3";
 #[derive(Serialize, Deserialize)]
 struct Title {
     names: Name,
@@ -71,6 +72,11 @@ pub struct App {
     out_handle:io::Stdout,
     client:Client,
 }
+impl Drop for App {
+    fn drop(&mut self) {
+        self.out_handle.execute(terminal::LeaveAlternateScreen);
+    }
+}
 impl App {
     pub fn new() -> App {
         let mut app = App {
@@ -79,14 +85,16 @@ impl App {
             out_handle:io::stdout(),
             client:Client::builder().build().unwrap(),
         };
+        app.out_handle.execute(terminal::EnterAlternateScreen);
         credentials(&mut app.out_handle);
+
         return app;
     }
 
-    fn fetch_release_list(&mut self) -> Result<(),reqwest::Error>{
+    fn fetch_updates_list(&mut self,page:u8) -> Result<(),reqwest::Error>{
         //println!("Fetching releases");
         let resp = reqwest::blocking::get(
-            "https://api.anilibria.tv/v3/title/updates?filter=names,player,list,id&limit=10",
+            format!("{API_HOST}/v3/title/updates?filter=names,player,list,id&limit=9&page={page}"),
         )?;
         if resp.status()!= StatusCode::OK{
             self.out_handle.write_fmt(format_args!("Failed to fetch, status code {}\n",resp.status()));
@@ -102,6 +110,7 @@ impl App {
     }
 
     pub fn menu_draw_loop(mut selected_option: usize,options: &Vec<String>) -> usize {
+
         let mut stdout = stdout().lock();
         stdout.queue(cursor::MoveTo(0,5));
         queue!(stdout,cursor::Hide,terminal::Clear(ClearType::FromCursorDown));
@@ -258,9 +267,10 @@ impl App {
             self.out_handle,
             cursor::MoveTo(0,5),
             terminal::Clear(ClearType::FromCursorDown),
-            Print("Fetching recent releases\n")
+            Print("Fetching recent releases...\n")
         );
-        match self.fetch_release_list(){
+        let mut page:u8 = 1;
+        match self.fetch_updates_list(page){
             Err(_) => {
                 
                 //wait for user input
@@ -272,7 +282,7 @@ impl App {
                 }
                 return MenuType::Back
             },
-            Ok(_)=> return self.choose_releases(),
+            Ok(_)=> return self.list_releases_interact(),
 
         }
     }
@@ -291,7 +301,7 @@ impl App {
         }
     }
     fn search_logic(&mut self) -> MenuType {
-        let mut stdin = stdin();
+        let stdin = stdin();
         queue!(
             self.out_handle,
             cursor::MoveTo(0,5),
@@ -306,8 +316,8 @@ impl App {
         let response = search_title(&search_name);
         let mut jsonVal: Value = serde_json::from_str(response.as_str()).expect("Parsing error");
         self.current_list = serde_json::from_value(jsonVal["list"].take()).expect("parsing error");
-        self.list_releases();
         self.out_handle.queue(cursor::Hide);
+        self.list_releases_interact();
         return MenuType::Back;
     }
     pub fn list_releases(&mut self) {
@@ -339,15 +349,46 @@ impl App {
 
         //return MenuType::Back;
     }
-    pub fn list_releases_interact(&mut self){
-        
+    pub fn list_releases_interact(&mut self)-> MenuType{
+        //Printing current list
+        let mut selected_option = 1;
+        queue!(self.out_handle,cursor::MoveTo(0,5),terminal::Clear(ClearType::FromCursorDown));
+        loop{
+            for i in 1..self.current_list.len()+1 {
+                if i == selected_option {
+                    queue!(
+                        self.out_handle,
+                        SetForegroundColor(Color::Black),
+                        SetBackgroundColor(Color::White),
+                        Print(format_args!("{}. {}\n", i,self.current_list[i-1].names.ru)),
+                        SetForegroundColor(Color::White),
+                        SetBackgroundColor(Color::Black),
+                    );
+                } else {
+                    self.out_handle.queue(Print(format_args!("{}. {}\n",i,self.current_list[i-1].names.ru)));
+                }
+            }
+            self.out_handle.queue(Print("0. Next page\n"));
+            self.out_handle.queue(cursor::MoveTo(0,5));
+            self.out_handle.flush();
+            match process_user_interaction(&mut selected_option, &self.current_list) {
+                1 =>{
+                    //if selected_option == 
+                    watch_title(&self.current_list[selected_option-1]);                  
+                }
+                -1 => {
+                    return MenuType::Back;
+                }
+                _ => {continue;}
+            }
+        }
     }
 }
 pub fn search_title(name: &String) -> String {
     
     let searchEndpoint = "https://api.anilibria.tv/v3/title/search";
     return reqwest::blocking::get(format!(
-        "{searchEndpoint}?limit=-1&order_by=id&search={name}"
+        "{searchEndpoint}?limit=9&order_by=id&search={name}"
     ))
     .expect("msg")
     .text()
@@ -434,5 +475,50 @@ fn watch_title(title: &Title) {
             .output()
             .expect("player");
         inputEpisode.clear();
+    }
+}
+fn process_user_interaction(selected_option:&mut usize,list:&Vec<Title>)->i8{
+    
+    loop {            
+        let event = read().unwrap();
+        match event {
+            Event::Key(event) if event.kind == KeyEventKind::Press => match event.code {
+                KeyCode::Esc => {
+                    return -1;
+                }
+                KeyCode::Enter => { return 1}
+                KeyCode::Down => {
+                    *selected_option += 1;
+                    if *selected_option >= list.len() {
+                        *selected_option = 0;
+                    }
+                    return 0;
+                }
+                KeyCode::Up => {
+                    if *selected_option == 0 {
+                        *selected_option = list.len();
+                    }
+                    *selected_option -= 1;
+                    return 0;
+                }
+                KeyCode::Char(c) => {
+                    match c.to_digit(10){
+                        Some(number)=>{
+                            let index = number as usize;
+                            if index <= list.len(){
+                                *selected_option = index;
+                                return 0;
+                            }
+                        }
+                        None=>{
+                            continue;
+                        }
+                    }
+                }
+                _ => {continue;}
+            },
+            _ => {}
+        }
+
     }
 }
