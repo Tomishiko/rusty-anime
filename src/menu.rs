@@ -24,8 +24,10 @@ use std::io;
 use std::io::stdin;
 use std::io::stdout;
 use std::io::Cursor;
+use std::io::Stdout;
 use std::io::StdoutLock;
 use std::io::Write;
+use std::option;
 use std::process::Command;
 use std::str::FromStr;
 
@@ -71,12 +73,14 @@ pub struct App {
 }
 impl App {
     pub fn new() -> App {
-        App {
+        let mut app = App {
             current_list: Vec::new(),
             menu_stack: Vec::new(),
             out_handle:io::stdout(),
             client:Client::builder().build().unwrap(),
-        }
+        };
+        credentials(&mut app.out_handle);
+        return app;
     }
 
     fn fetch_release_list(&mut self) -> Result<(),reqwest::Error>{
@@ -99,8 +103,7 @@ impl App {
 
     pub fn menu_draw_loop(mut selected_option: usize,options: &Vec<String>) -> usize {
         let mut stdout = stdout().lock();
-        stdout.queue(cursor::MoveTo(0,0));
-        credentials(&mut stdout);
+        stdout.queue(cursor::MoveTo(0,5));
         queue!(stdout,cursor::Hide,terminal::Clear(ClearType::FromCursorDown));
         loop {
             for i in 0..options.len() {
@@ -154,28 +157,31 @@ impl App {
         }
     } 
     fn choose_releases(&mut self) -> MenuType {
-        let mut out_handle = io::stdout().lock();
-        for i in 0..self.current_list.len() {
-            out_handle
-                .write_fmt(format_args!(
-                    "{}. {} [{}]\n",
-                    i,
-                    self.current_list[i].names.ru,
-                    self.current_list[i].player["episodes"]["string"]
-                ))
-                .expect("write error");
-        }
-        let mut input = String::new();
-        io::stdout()
-            .write(b"Enter the release number: ")
-            .expect("input error");
-        let start_position = cursor::position().unwrap();
-        out_handle.queue(crossterm::cursor::Show);
-        out_handle.flush();
-        let mut esc_flag = false;
-        io::stdout().flush();
-        self.out_handle.execute(cursor::EnableBlinking);
-        io::stdin().read_line(&mut input);
+        //let mut out_handle = io::stdout().lock();
+        // Old input******************************************
+        // for i in 0..self.current_list.len() {
+        //     self.out_handle
+        //         .write_fmt(format_args!(
+        //             "{}. {} [{}]\n",
+        //             i,
+        //             self.current_list[i].names.ru,
+        //             self.current_list[i].player["episodes"]["string"]
+        //         ))
+        //         .expect("write error");
+        // }
+        // let mut input = String::new();
+        // io::stdout()
+        //     .write(b"Enter the release number: ")
+        //     .expect("input error");
+        // let start_position = cursor::position().unwrap();
+        // self.out_handle.queue(crossterm::cursor::Show);
+        // self.out_handle.flush();
+        // let mut esc_flag = false;
+        // io::stdout().flush();
+        // self.out_handle.execute(cursor::EnableBlinking);
+        // io::stdin().read_line(&mut input);
+
+        // Custom keyboard reading*************************************************
         // loop {
         //     let event=  read().unwrap();
         //     if event == Event::Key(KeyCode::Esc.into()){
@@ -216,22 +222,34 @@ impl App {
     
 
 
-
+        
 
         //io::stdin().read_line(&mut input).expect("input error");
-        out_handle.queue(crossterm::cursor::Hide);
-        if(!esc_flag){
-            let index: usize = input.trim().parse().unwrap();
-            out_handle.write_fmt(format_args!(
-                "Launching the {}",
-                self.current_list[index].names.en
-            ));
-            out_handle.flush();
-            watch_title(&self.current_list[index]);
-            //term.read_key();
-            read().unwrap();
-        }
-        
+        //self.out_handle.queue(crossterm::cursor::Hide);
+        // if(!esc_flag){
+        //     let index: usize = input.trim().parse().unwrap();
+        //     self.out_handle.write_fmt(format_args!(
+        //         "Launching the {}",
+        //         self.current_list[index].names.en
+        //     ));
+        //     self.out_handle.flush();
+        //     watch_title(&self.current_list[index]);
+        //     //term.read_key();
+        //     read().unwrap();
+        // }
+        let options:Vec<String> = self.current_list
+                        .iter()
+                        .map(|x| x.names.ru.clone())
+                        .collect();
+        let index = App::menu_draw_loop(0,&options);
+        self.out_handle.write_fmt(format_args!(
+                    "Launching the {}",
+                    self.current_list[index].names.ru
+                ));
+                self.out_handle.flush();
+                watch_title(&self.current_list[index]);
+                //term.read_key();
+                read().unwrap();
         return MenuType::Back;
     }
     fn fetch_latest_menu(&mut self) -> MenuType{
@@ -321,6 +339,9 @@ impl App {
 
         //return MenuType::Back;
     }
+    pub fn list_releases_interact(&mut self){
+        
+    }
 }
 pub fn search_title(name: &String) -> String {
     
@@ -334,7 +355,7 @@ pub fn search_title(name: &String) -> String {
 }
 
 //##################################################################
-fn credentials(std_out:&mut StdoutLock<'static>) {
+fn credentials(std_out:&mut Stdout) {
     //let mut out = io::stdout().lock();
     std_out.write_fmt(format_args!("{:-<52}\n", ""));
     std_out.write_fmt(format_args!("{:<120}\n", "CLI anime episode parser"));

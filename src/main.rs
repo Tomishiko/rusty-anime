@@ -27,11 +27,15 @@ fn main() {
     // if args.len() != 1{
     //     parse_arguments(&args);
     // }
-    execute!(io::stdout(),terminal::EnterAlternateScreen);
+    execute!(io::stdout(),
+            terminal::EnterAlternateScreen,
+            terminal::DisableLineWrap);
+    terminal::enable_raw_mode();
     
     //credentials();
     //term.read_char();
     let mut app = App::new();
+    
     //crossterm::terminal::enable_raw_mode();
     let mut current = menu_provider(MenuType::Main);
     //app.menu_stack.push(current);
@@ -39,7 +43,7 @@ fn main() {
     loop{
         let next = (current.action)(&mut app);
         if matches!(next,MenuType::Back) {
-            if(app.menu_stack.len()==0){
+            if app.menu_stack.len()==0 {
                 break;
             }
                 
@@ -54,9 +58,13 @@ fn main() {
         
     }
     //crossterm::terminal::disable_raw_mode();
-    execute!(io::stdout(),terminal::LeaveAlternateScreen);
+    execute!(io::stdout(),
+            terminal::LeaveAlternateScreen,
+            terminal::EnableLineWrap);
+    terminal::disable_raw_mode();
 
 }
 fn navigator() {}
 fn search_logic() {}
 fn parse_arguments(args: &Vec<String>) {}
+
