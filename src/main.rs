@@ -1,16 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-use crossterm::cursor;
-use crossterm::execute;
-use crossterm::queue;
-use crossterm::terminal;
-use crossterm::QueueableCommand;
-use menu::menu_provider;
-use menu::MenuNode;
-use menu::MenuType;
-use menu::NavType;
-use menu::App;
+mod menu;
+mod api;
+use menu::*;
 use reqwest;
 use std::env;
 use std::env::current_exe;
@@ -32,14 +25,9 @@ fn main() {
     //         terminal::DisableLineWrap);
     //terminal::enable_raw_mode();
     
-    //credentials();
-    //term.read_char();
     let mut app = App::new();
     
-    //crossterm::terminal::enable_raw_mode();
     let mut current = menu_provider(MenuType::Main);
-    //app.menu_stack.push(current);
-    //let mut menu_stack:Vec<MenuNode> = Vec::new();
     loop{
         let next = (current.action)(&mut app);
         if matches!(next,MenuType::Back) {
@@ -57,11 +45,6 @@ fn main() {
         
         
     }
-    //crossterm::terminal::disable_raw_mode();
-    // execute!(io::stdout(),
-    //         terminal::LeaveAlternateScreen,
-    //         terminal::EnableLineWrap);
-    //terminal::disable_raw_mode();
 
 }
 fn navigator() {}
