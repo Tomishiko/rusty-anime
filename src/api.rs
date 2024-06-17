@@ -5,7 +5,7 @@ use serde_json::error;
 use serde_json::Value;
 
 
-
+pub const API_PLAYER_CACHE:&str = "https://cache.libria.fun";
 const API_HOST:&str = "https://api.anilibria.tv/v3";
 
 #[derive(Serialize, Deserialize)]
@@ -30,10 +30,8 @@ pub fn fetch_updates_list(page:u8) -> Result<Vec<Title>,reqwest::Error>{
         format!("{API_HOST}/v3/title/updates?filter=names,player,list,id&limit=9&page={page}"),
     )?;
     if resp.status()!= StatusCode::OK{
-        //self.out_handle.write_fmt(format_args!("Failed to fetch, status code {}\n",resp.status()));
         return  Err(resp.error_for_status().err().unwrap());
     }
-    //dbg!(&resp);
     return Ok(process_server_response_body(resp));
 }
 pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
@@ -47,6 +45,7 @@ pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
     return Ok(process_server_response_body(response));
 }
 fn process_server_response_body(response:reqwest::blocking::Response)->Vec<Title>{
+    
     let mut jsonVal: Value = serde_json::from_str(response.text().unwrap().as_str()).expect("error while parsing response");
     return serde_json::from_value(jsonVal["list"].take()).expect("error while parsing response");
 }
