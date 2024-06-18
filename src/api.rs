@@ -32,6 +32,7 @@ pub fn fetch_updates_list(page:u8) -> Result<Vec<Title>,reqwest::Error>{
     if resp.status()!= StatusCode::OK{
         return  Err(resp.error_for_status().err().unwrap());
     }
+    
     return Ok(process_server_response_body(resp));
 }
 pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
@@ -47,5 +48,7 @@ pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
 fn process_server_response_body(response:reqwest::blocking::Response)->Vec<Title>{
     
     let mut jsonVal: Value = serde_json::from_str(response.text().unwrap().as_str()).expect("error while parsing response");
-    return serde_json::from_value(jsonVal["list"].take()).expect("error while parsing response");
+    let val = serde_json::from_value(jsonVal["list"].take()).expect("error while parsing response");
+    
+    return val;
 }

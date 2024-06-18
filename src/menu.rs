@@ -25,6 +25,7 @@ use std::io::Write;
 use std::option;
 use std::process::Command;
 use std::str::FromStr;
+use std::vec;
 use crate::api;
 use crate::api::*;
 
@@ -130,22 +131,6 @@ impl App {
             stdout.queue(crossterm::cursor::MoveTo(0,5));
         }
     } 
-    fn choose_releases(&mut self) -> MenuType {
-        
-        let options:Vec<String> = self.current_list
-                        .iter()
-                        .map(|x| x.names.ru.clone())
-                        .collect();
-        let index = App::menu_draw_loop(0,&options);
-        self.out_handle.write_fmt(format_args!(
-                    "Launching the {}",
-                    self.current_list[index].names.ru
-                ));
-                self.out_handle.flush();
-                self.watch_title(index);
-                read().unwrap();
-        return MenuType::Back;
-    }
     fn fetch_latest_menu(&mut self) -> MenuType{
         queue!(
             self.out_handle,
@@ -157,9 +142,9 @@ impl App {
         match fetch_updates_list(page){
             Err(err) => {
                 
-                self.out_handle.write_fmt(
-                    format_args!(
-                        "Failed to fetch, status code {}\n",err.status().unwrap()));
+                self.out_handle.execute(Print(
+                    format!(
+                        "Failed to fetch, status code {}\n",err.status().unwrap())));
                 //wait for user input
                 loop {
                     self.out_handle.execute(cursor::Hide);
@@ -171,18 +156,22 @@ impl App {
             },
             Ok(val)=> {
                 self.current_list = val;
-                return self.list_releases_interact()
-            },
+                let options = self.build_release_list();
+                let option = interactive_menu(&options,self,MenuType::List);
+                self.watch_title(option as usize);
+                return MenuType::Back;
+            }
 
         }
     }
     fn main_menu(&mut self) -> MenuType {
-        let index = App::menu_draw_loop(
-            0,
+        let index = interactive_menu(
             &vec![
-                String::from_str("Fetch todays").unwrap(),
-                String::from_str("Search").unwrap(),
+                String::from_str("Fetch todays\n").unwrap(),
+                String::from_str("Search\n").unwrap(),
             ],
+            self,
+            MenuType::Main
         );
         match index {
             0 => return MenuType::List,
@@ -212,72 +201,26 @@ impl App {
         };
 
         self.out_handle.execute(cursor::Hide);
-        self.list_releases_interact();
+        let menu_options = self.build_release_list();
+        interactive_menu(&menu_options,self,MenuType::List);
         return MenuType::Back;
     }
-    pub fn list_releases(&mut self) {
-        
-        for i in 0..self.current_list.len() {
-            self.out_handle
-                .write_fmt(format_args!(
-                    "{}. {} [{}]\n",
-                    i,
-                    self.current_list[i].names.ru,
-                    self.current_list[i].player["episodes"]["string"]
-                ))
-                .expect("write error");
+    fn build_release_list(&self)->Vec<String>{
+        let mut list:Vec<String> = Vec::with_capacity(self.current_list.len());
+        for i in 0..self.current_list.len(){
+            list.push(format!(
+                "{}. \"{}\" [{}-{}]\n",
+                i+1,
+                self.current_list[i].names.ru,
+                self.current_list[i].player["episodes"]["first"],
+                self.current_list[i].player["episodes"]["last"]));
         }
-        let mut input = String::new();
-        io::stdout()
-            .write(b"Enter the release number: ")
-            .expect("input error");
-        self.out_handle.flush();
-        io::stdin().read_line(&mut input).expect("input error");
-        let index: usize = input.trim().parse().unwrap();
-        self.out_handle.write_fmt(format_args!(
-            "Launching the {}",
-            self.current_list[index].names.en
-        ));
-        self.out_handle.queue(cursor::Hide);
-        self.out_handle.flush();
-        self.watch_title(index);
+        return list;
+    }
 
-        //return MenuType::Back;
-    }
-    pub fn list_releases_interact(&mut self)-> MenuType{
-        //Printing current list
-        let mut selected_option = 1;
-        queue!(self.out_handle,cursor::Hide,cursor::MoveTo(0,5),terminal::Clear(ClearType::FromCursorDown));
-        loop{
-            for i in 1..self.current_list.len() {
-                if i == selected_option {
-                    queue!(
-                        self.out_handle,
-                        SetForegroundColor(Color::Black),
-                        SetBackgroundColor(Color::White),
-                        Print( format_args!( "{}. {} {}\n", i, self.current_list[i-1].names.ru, self.current_list[i-1].player["episodes"]["string"] ) ),
-                        SetForegroundColor(Color::White),
-                        SetBackgroundColor(Color::Black),
-                    );
-                    
-                } else {
-                    self.out_handle.queue(Print(format_args!("{}. {} {}\n",i,self.current_list[i-1].names.ru,self.current_list[i-1].player["episodes"]["string"] )));
-                }
-            }
-            //self.out_handle.queue(Print("0. Next page\n"));
-            self.out_handle.queue(cursor::MoveTo(0,5));
-            self.out_handle.flush();
-            match process_user_interaction(&mut selected_option, self.current_list.len()+1) {
-                1 =>{
-                    self.watch_title(selected_option-1);         
-                }
-                -1 => {
-                    return MenuType::Back;
-                }
-                _ => {continue;}
-            }
-        }
-    }
+    
+    
+    
     fn watch_title(&mut self,selected_option:usize) {
 
         let title = &self.current_list[selected_option];
@@ -366,39 +309,42 @@ pub fn menu_provider(menu_type: MenuType) -> MenuNode {
         }
     }
 }
-//TODO:debug interaction logic
-
-fn process_user_interaction(selected_option:&mut usize,list_size:usize)->i8{
+//
+//TODO this goes to menu module
+//
+fn process_user_interaction(selected_option:&mut usize,list_size:usize)->KeyCode{
     
     loop {            
         let event = read().unwrap();
         match event {
             Event::Key(event) if event.kind == KeyEventKind::Press => match event.code {
                 KeyCode::Esc => {
-                    return -1;
+                    return KeyCode::Esc;
                 }
-                KeyCode::Enter => { return 1}
+                KeyCode::Enter => {
+                     return KeyCode::Enter;
+                    }
                 KeyCode::Down => {
                     *selected_option += 1;
                     if *selected_option >= list_size {
                         *selected_option = 0;
                     }
-                    return 0;
+                    return KeyCode::Null;
                 }
                 KeyCode::Up => {
                     if *selected_option == 0 {
                         *selected_option = list_size;
                     }
                     *selected_option -= 1;
-                    return 0;
+                    return KeyCode::Null;
                 }
                 KeyCode::Char(c) => {
                     match c.to_digit(10){
                         Some(number)=>{
                             let index = number as usize;
-                            if index <= list_size{
-                                *selected_option = index;
-                                return 0;
+                            if index <= list_size && index !=0{
+                                *selected_option = index-1;
+                                return KeyCode::Null;
                             }
                         }
                         None=>{
@@ -412,4 +358,51 @@ fn process_user_interaction(selected_option:&mut usize,list_size:usize)->i8{
         }
 
     }
+}
+pub fn interactive_menu(current_list: &Vec<String>,app: &mut App,menu_type: MenuType)-> i8{//TODO change this to return selected index
+    //Printing current list
+    
+    let mut selected_option = 0;
+    queue!(app.out_handle,cursor::Hide,cursor::MoveTo(0,5),terminal::Clear(ClearType::FromCursorDown));
+    loop{
+        for i in 0..current_list.len() {
+            if i == selected_option {
+                queue!(
+                    app.out_handle,
+                    SetForegroundColor(Color::Black),
+                    SetBackgroundColor(Color::White),
+                    Print(&current_list[i]),
+                    SetForegroundColor(Color::White),
+                    SetBackgroundColor(Color::Black),
+                ).unwrap();
+                
+            } else {
+                app.out_handle.queue(Print(&current_list[i]));
+            }
+        }
+        //app.out_handle.queue(Print("0. Next page\n"));
+        app.out_handle.queue(cursor::MoveTo(0,5));
+        app.out_handle.flush();
+        match process_user_interaction(&mut selected_option, current_list.len()) {
+            KeyCode::Enter =>{
+                //app.watch_title(selected_option-1);
+                //action_selector(&mut selected_option, menu_type, &app); //TODO check if selected option works ok with number nav
+                return selected_option as i8;
+            }
+            KeyCode::Esc => {
+                return -1;
+            }
+            _ => {continue;}
+        }
+    }
+}
+fn action_selector(selected_option:&mut usize,menu_type: MenuType,app:&App){ 
+    // match menu_type {
+    //     MenuType::List => {
+    //         app.watch_title(selected_option);
+    //     }
+    //     MenuType::Main=>{
+            
+    //     }
+    //}
 }

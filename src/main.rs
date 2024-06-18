@@ -29,6 +29,7 @@ fn main() {
     
     let mut current = menu_provider(MenuType::Main);
     loop{
+
         let next = (current.action)(&mut app);
         if matches!(next,MenuType::Back) {
             if app.menu_stack.len()==0 {
@@ -45,7 +46,6 @@ fn main() {
         
         
     }
-
 }
 fn navigator() {}
 fn search_logic() {}
