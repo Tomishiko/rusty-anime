@@ -35,6 +35,12 @@ pub enum NavType {
     TypeIn,
     Interactive,
 }
+pub enum UserAction {
+    Select,
+    Back,
+    PageForward,
+    PageBackward
+}
 pub struct MenuNode {
     //pub parent: MenuNode,
     pub show_numbers: bool,
@@ -138,42 +144,61 @@ impl App {
             terminal::Clear(ClearType::FromCursorDown),
             Print("Fetching recent releases...\n")
         );
+
         let mut page:u8 = 1;
-        match fetch_updates_list(page){
-            Err(err) => {
-                
-                self.out_handle.execute(Print(
-                    format!(
-                        "Failed to fetch, status code {}\n",err.status().unwrap())));
-                //wait for user input
-                loop {
-                    self.out_handle.execute(cursor::Hide);
-                    if read().unwrap() == Event::Key(KeyCode::Enter.into()){
-                        break;
-                    }    
+        loop{
+            match fetch_updates_list(page){
+                Err(err) => {
+                    
+                    self.out_handle.execute(Print(
+                        format!(
+                            "Failed to fetch, status code {}\n",err.status().unwrap())));
+                    //wait for user input
+                    loop {
+                        self.out_handle.execute(cursor::Hide);
+                        if read().unwrap() == Event::Key(KeyCode::Enter.into()){
+                            break;
+                        }    
+                    }
+                    return MenuType::Back;
+                },
+                Ok(val)=> {
+                    self.current_list = val;
+                    let options = self.build_release_list();
+                    let (action,selection) = interactive_menu(&options,self,MenuType::List,Some(page));
+
+                        match action {
+                            UserAction::Select => self.watch_title(selection.unwrap()),
+                            UserAction::Back => {},
+                            UserAction::PageForward => {
+                                page+=1;
+                                continue;
+                            },
+                            UserAction::PageBackward => {
+                                page-=1;
+                                continue;
+                            },
+                        }
+                    
+                    
+                    return MenuType::Back;
                 }
-                return MenuType::Back
-            },
-            Ok(val)=> {
-                self.current_list = val;
-                let options = self.build_release_list();
-                let option = interactive_menu(&options,self,MenuType::List);
-                self.watch_title(option as usize);
-                return MenuType::Back;
+
             }
 
         }
     }
     fn main_menu(&mut self) -> MenuType {
-        let index = interactive_menu(
+        let (action,index) = interactive_menu(
             &vec![
                 String::from_str("Fetch todays\n").unwrap(),
                 String::from_str("Search\n").unwrap(),
             ],
             self,
-            MenuType::Main
+            MenuType::Main,
+            None
         );
-        match index {
+        match index.unwrap() {
             0 => return MenuType::List,
             1 => return MenuType::Search,
             _ => return MenuType::Back,
@@ -202,7 +227,7 @@ impl App {
 
         self.out_handle.execute(cursor::Hide);
         let menu_options = self.build_release_list();
-        interactive_menu(&menu_options,self,MenuType::List);
+        interactive_menu(&menu_options,self,MenuType::List,None);
         return MenuType::Back;
     }
     fn build_release_list(&self)->Vec<String>{
@@ -312,7 +337,7 @@ pub fn menu_provider(menu_type: MenuType) -> MenuNode {
 //
 //TODO this goes to menu module
 //
-fn process_user_interaction(selected_option:&mut usize,list_size:usize)->KeyCode{
+fn process_user_interaction(selected_option:&mut usize,list_size:usize,page:u8)->KeyCode{
     
     loop {            
         let event = read().unwrap();
@@ -338,6 +363,17 @@ fn process_user_interaction(selected_option:&mut usize,list_size:usize)->KeyCode
                     *selected_option -= 1;
                     return KeyCode::Null;
                 }
+                KeyCode::Right => {
+                    
+                    return KeyCode::Right;
+                }
+                KeyCode::Left => {
+                    if (page - 1) <= 0{
+                        continue;
+                    }
+                    
+                    return KeyCode::Left;
+                }
                 KeyCode::Char(c) => {
                     match c.to_digit(10){
                         Some(number)=>{
@@ -359,7 +395,12 @@ fn process_user_interaction(selected_option:&mut usize,list_size:usize)->KeyCode
 
     }
 }
-pub fn interactive_menu(current_list: &Vec<String>,app: &mut App,menu_type: MenuType)-> i8{//TODO change this to return selected index
+pub fn interactive_menu(
+    current_list: &Vec<String>,
+    app: &mut App,
+    menu_type: MenuType,
+    page:Option<u8>)-> (UserAction,Option<usize>) {
+
     //Printing current list
     
     let mut selected_option = 0;
@@ -383,26 +424,21 @@ pub fn interactive_menu(current_list: &Vec<String>,app: &mut App,menu_type: Menu
         //app.out_handle.queue(Print("0. Next page\n"));
         app.out_handle.queue(cursor::MoveTo(0,5));
         app.out_handle.flush();
-        match process_user_interaction(&mut selected_option, current_list.len()) {
+        match process_user_interaction(&mut selected_option, current_list.len(),page.unwrap_or(1)) {
             KeyCode::Enter =>{
-                //app.watch_title(selected_option-1);
-                //action_selector(&mut selected_option, menu_type, &app); //TODO check if selected option works ok with number nav
-                return selected_option as i8;
+                return ( UserAction::Select , Some(selected_option) );
             }
             KeyCode::Esc => {
-                return -1;
+                return (UserAction::Back,None);
+            }
+            KeyCode::Right =>{
+                return (UserAction::PageForward,None);
+            }
+            KeyCode::Left =>{
+                return (UserAction::PageBackward,None);
             }
             _ => {continue;}
         }
     }
 }
-fn action_selector(selected_option:&mut usize,menu_type: MenuType,app:&App){ 
-    // match menu_type {
-    //     MenuType::List => {
-    //         app.watch_title(selected_option);
-    //     }
-    //     MenuType::Main=>{
-            
-    //     }
-    //}
-}
+ 
