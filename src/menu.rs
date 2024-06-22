@@ -1,4 +1,5 @@
 use console::colors_enabled_stderr;
+use console::Term;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
@@ -172,10 +173,20 @@ impl App {
                             UserAction::Back => {},
                             UserAction::PageForward => {
                                 page+=1;
+                                queue!(
+                                    self.out_handle,
+                                    terminal::Clear(ClearType::FromCursorDown),
+                                    Print("Loading..."));
+                                self.out_handle.flush();
                                 continue;
                             },
                             UserAction::PageBackward => {
                                 page-=1;
+                                queue!(
+                                    self.out_handle,
+                                    terminal::Clear(ClearType::FromCursorDown),
+                                    Print("Loading..."));
+                                self.out_handle.flush();
                                 continue;
                             },
                         }
@@ -210,25 +221,53 @@ impl App {
             self.out_handle,
             cursor::MoveTo(0,5),
             terminal::Clear(terminal::ClearType::FromCursorDown),
-    );
+        );
         
         self.out_handle.write(b"Enter search name: ");
         self.out_handle.queue(cursor::Show);
         self.out_handle.flush();
         let mut search_name = String::new();
         stdin.read_line(&mut search_name);
-        match search_title(&search_name){
-            Ok(val) => {self.current_list = val},
-            Err(err) =>{
-                self.out_handle.execute(Print(format_args!("Failed to fetch, status code {}\n",err.status().unwrap())));
-                return MenuType::Back;
-            }
-        };
+        let mut page = 1;
+        loop{
 
-        self.out_handle.execute(cursor::Hide);
-        let menu_options = self.build_release_list();
-        interactive_menu(&menu_options,self,MenuType::List,None);
-        return MenuType::Back;
+        
+            match search_title(&search_name){
+                Ok(val) => {self.current_list = val},
+                Err(err) =>{
+                    self.out_handle.execute(Print(format_args!("Failed to fetch, status code {}\n",err.status().unwrap())));
+                    return MenuType::Back;
+                }
+            };
+
+            self.out_handle.execute(cursor::Hide);
+            let menu_options = self.build_release_list();
+            let (action,selection) = interactive_menu(&menu_options,self,MenuType::List,Some(page));
+            match action {
+                UserAction::Select => self.watch_title(selection.unwrap()),
+                UserAction::Back => {},
+                UserAction::PageForward => {
+                    page+=1;
+                    queue!(
+                        self.out_handle,
+                        terminal::Clear(ClearType::FromCursorDown),
+                        Print("Loading..."));
+                    self.out_handle.flush();
+                    continue;
+                },
+                UserAction::PageBackward => {
+                    page-=1;
+                    queue!(
+                        self.out_handle,
+                        terminal::Clear(ClearType::FromCursorDown),
+                        Print("Loading..."));
+                    self.out_handle.flush();
+                    continue;
+                },
+            }
+            return MenuType::Back;
+        }
+        
     }
     fn build_release_list(&self)->Vec<String>{
         let mut list:Vec<String> = Vec::with_capacity(self.current_list.len());
@@ -421,6 +460,10 @@ pub fn interactive_menu(
                 app.out_handle.queue(Print(&current_list[i]));
             }
         }
+        if(page.is_some()){
+            app.out_handle.queue(Print(format!("\nPage < {} >",page.unwrap())));
+        }
+        
         //app.out_handle.queue(Print("0. Next page\n"));
         app.out_handle.queue(cursor::MoveTo(0,5));
         app.out_handle.flush();
