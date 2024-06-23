@@ -23,8 +23,15 @@ pub struct Name {
 pub struct Response {
     pub list: Vec<Title>,
 }
+#[derive(Serialize, Deserialize)]
+pub struct Pagination{
+    pub pages: u32,
+    pub current_page:u32,
+    items_per_page:u32,
+    total_items:u32
+}
 
-pub fn fetch_updates_list(page:u8) -> Result<Vec<Title>,reqwest::Error>{
+pub fn fetch_updates_list(page:u32) -> Result<(Pagination,Vec<Title>),reqwest::Error>{
     //println!("Fetching releases");
     let resp = reqwest::blocking::get(
         format!("{API_HOST}/v3/title/updates?filter=names,player,list,id&limit=9&page={page}"),
@@ -35,7 +42,7 @@ pub fn fetch_updates_list(page:u8) -> Result<Vec<Title>,reqwest::Error>{
     
     return Ok(process_server_response_body(resp));
 }
-pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
+pub fn search_title(name: &String) -> Result<(Pagination,Vec<Title>),reqwest::Error> {
     
     let response = reqwest::blocking::get(format!(
         "{API_HOST}/v3/title/search?limit=9&order_by=id&search={name}"
@@ -45,10 +52,10 @@ pub fn search_title(name: &String) -> Result<Vec<Title>,reqwest::Error> {
     }
     return Ok(process_server_response_body(response));
 }
-fn process_server_response_body(response:reqwest::blocking::Response)->Vec<Title>{
+fn process_server_response_body(response:reqwest::blocking::Response)->(Pagination,Vec<Title>){
     
     let mut jsonVal: Value = serde_json::from_str(response.text().unwrap().as_str()).expect("error while parsing response");
-    let val = serde_json::from_value(jsonVal["list"].take()).expect("error while parsing response");
-    
-    return val;
+    let titles = serde_json::from_value(jsonVal["list"].take()).expect("error while parsing response");
+    let pages:Pagination = serde_json::from_value(jsonVal["pagination"].take()).expect("error while parsing response");
+    return (pages,titles);
 }

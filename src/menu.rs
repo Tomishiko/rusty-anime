@@ -146,7 +146,8 @@ impl App {
             Print("Fetching recent releases...\n")
         );
 
-        let mut page:u8 = 1;
+        let mut page:u32 = 1;
+        let mut max_page:u32 = 1;
         loop{
             match fetch_updates_list(page){
                 Err(err) => {
@@ -164,9 +165,13 @@ impl App {
                     return MenuType::Back;
                 },
                 Ok(val)=> {
-                    self.current_list = val;
+                    self.current_list = val.1;
+                    max_page = val.0.pages;
                     let options = self.build_release_list();
-                    let (action,selection) = interactive_menu(&options,self,MenuType::List,Some(page));
+                    let (action,selection) = interactive_menu(
+                                                                        &options,
+                                                                        self,MenuType::List,
+                                                                        Some( (page , max_page) ) );
 
                         match action {
                             UserAction::Select => self.watch_title(selection.unwrap()),
@@ -229,11 +234,15 @@ impl App {
         let mut search_name = String::new();
         stdin.read_line(&mut search_name);
         let mut page = 1;
+        let mut max_page=1;
         loop{
 
         
             match search_title(&search_name){
-                Ok(val) => {self.current_list = val},
+                Ok(val) => {
+                    self.current_list = val.1;
+                    max_page = val.0.pages;
+                },
                 Err(err) =>{
                     self.out_handle.execute(Print(format_args!("Failed to fetch, status code {}\n",err.status().unwrap())));
                     return MenuType::Back;
@@ -242,7 +251,10 @@ impl App {
 
             self.out_handle.execute(cursor::Hide);
             let menu_options = self.build_release_list();
-            let (action,selection) = interactive_menu(&menu_options,self,MenuType::List,Some(page));
+            let (action,selection) = interactive_menu(
+                                                    &menu_options,
+                                                    self,MenuType::List,
+                                                    Some( (page,max_page) ));
             match action {
                 UserAction::Select => self.watch_title(selection.unwrap()),
                 UserAction::Back => {},
@@ -376,7 +388,7 @@ pub fn menu_provider(menu_type: MenuType) -> MenuNode {
 //
 //TODO this goes to menu module
 //
-fn process_user_interaction(selected_option:&mut usize,list_size:usize,page:u8)->KeyCode{
+fn process_user_interaction(selected_option:&mut usize,list_size:usize,pages:(u32,u32))->KeyCode{
     
     loop {            
         let event = read().unwrap();
@@ -403,11 +415,13 @@ fn process_user_interaction(selected_option:&mut usize,list_size:usize,page:u8)-
                     return KeyCode::Null;
                 }
                 KeyCode::Right => {
-                    
+                    if (pages.0 + 1) >= pages.1{
+                        continue;
+                    }
                     return KeyCode::Right;
                 }
                 KeyCode::Left => {
-                    if (page - 1) <= 0{
+                    if (pages.0 - 1) <= 0{
                         continue;
                     }
                     
@@ -438,7 +452,8 @@ pub fn interactive_menu(
     current_list: &Vec<String>,
     app: &mut App,
     menu_type: MenuType,
-    page:Option<u8>)-> (UserAction,Option<usize>) {
+    pages:Option<(u32,u32)>
+    )-> (UserAction,Option<usize>) {
 
     //Printing current list
     
@@ -460,14 +475,18 @@ pub fn interactive_menu(
                 app.out_handle.queue(Print(&current_list[i]));
             }
         }
-        if(page.is_some()){
-            app.out_handle.queue(Print(format!("\nPage < {} >",page.unwrap())));
-        }
+        let is_page_displayed=pages.is_some();
+
+        let pages = pages.unwrap_or((1,1));
+            if is_page_displayed{
+                app.out_handle.queue(Print(format!("\nPage < {} >",pages.0)));
+            }
+                
         
         //app.out_handle.queue(Print("0. Next page\n"));
         app.out_handle.queue(cursor::MoveTo(0,5));
         app.out_handle.flush();
-        match process_user_interaction(&mut selected_option, current_list.len(),page.unwrap_or(1)) {
+        match process_user_interaction(&mut selected_option, current_list.len(),pages) {
             KeyCode::Enter =>{
                 return ( UserAction::Select , Some(selected_option) );
             }
