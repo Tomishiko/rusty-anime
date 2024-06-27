@@ -1,8 +1,10 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
-mod menu;
+// #![allow(dead_code)]
+// #![allow(unused_variables)]
+// #![allow(unused_imports)]
 mod api;
+mod app;
+mod menu;
+use app::App;
 use menu::*;
 use reqwest;
 use std::env;
@@ -24,30 +26,24 @@ fn main() {
     //         terminal::EnterAlternateScreen,
     //         terminal::DisableLineWrap);
     //terminal::enable_raw_mode();
-    
-    let mut app = App::new();
-    
-    let mut current = menu_provider(MenuType::Main);
-    loop{
 
+    let mut app = App::new();
+
+    let mut current = menu_provider(MenuType::Main);
+    loop {
         let next = (current.action)(&mut app);
-        if matches!(next,MenuType::Back) {
-            if app.menu_stack.len()==0 {
+        if matches!(next, MenuType::Back) {
+            if app.menu_stack.len() == 0 {
                 break;
             }
-                
+
             current = app.menu_stack.pop().expect("msg");
-        }
-        else {
+        } else {
             app.menu_stack.push(current);
             current = menu_provider(next);
-                
         }
-        
-        
     }
 }
 fn navigator() {}
 fn search_logic() {}
 fn parse_arguments(args: &Vec<String>) {}
-
