@@ -39,65 +39,65 @@ impl App {
         return app;
     }
 
-    pub fn menu_draw_loop(mut selected_option: usize, options: &Vec<String>) -> usize {
-        let mut stdout = stdout().lock();
-        stdout.queue(cursor::MoveTo(0, 5));
-        queue!(
-            stdout,
-            cursor::Hide,
-            terminal::Clear(ClearType::FromCursorDown)
-        );
-        loop {
-            for i in 0..options.len() {
-                if i == selected_option {
-                    queue!(
-                        stdout,
-                        SetForegroundColor(Color::Black),
-                        SetBackgroundColor(Color::White),
-                        Print(format_args!("{}\n", &options[i])),
-                        SetForegroundColor(Color::White),
-                        SetBackgroundColor(Color::Black),
-                    );
-                } else {
-                    stdout.queue(Print(format_args!("{}\n", &options[i])));
-                }
-            }
-            stdout.queue(Print("\n\nEnter: select\tEsc: back\n"));
-            stdout.flush();
+    // pub fn menu_draw_loop(mut selected_option: usize, options: &Vec<String>) -> usize {
+    //     let mut stdout = stdout().lock();
+    //     stdout.queue(cursor::MoveTo(0, 5));
+    //     queue!(
+    //         stdout,
+    //         cursor::Hide,
+    //         terminal::Clear(ClearType::FromCursorDown)
+    //     );
+    //     loop {
+    //         for i in 0..options.len() {
+    //             if i == selected_option {
+    //                 queue!(
+    //                     stdout,
+    //                     SetForegroundColor(Color::Black),
+    //                     SetBackgroundColor(Color::White),
+    //                     Print(format_args!("{}\n", &options[i])),
+    //                     SetForegroundColor(Color::White),
+    //                     SetBackgroundColor(Color::Black),
+    //                 );
+    //             } else {
+    //                 stdout.queue(Print(format_args!("{}\n", &options[i])));
+    //             }
+    //         }
+    //         stdout.queue(Print("\n\nEnter: select\tEsc: back\n"));
+    //         stdout.flush();
 
-            loop {
-                let event = read().unwrap();
-                match event {
-                    Event::Key(event) if event.kind == KeyEventKind::Press => match event.code {
-                        KeyCode::Esc => {
-                            return 10;
-                        }
-                        KeyCode::Down => {
-                            selected_option += 1;
-                            if selected_option >= options.len() {
-                                selected_option = 0;
-                            }
-                            break;
-                        }
-                        KeyCode::Up => {
-                            if selected_option == 0 {
-                                selected_option = options.len();
-                            }
-                            selected_option -= 1;
-                            break;
-                        }
-                        KeyCode::Enter => return selected_option,
-                        _ => {
-                            continue;
-                        }
-                    },
-                    _ => {}
-                }
-            }
+    //         loop {
+    //             let event = read().unwrap();
+    //             match event {
+    //                 Event::Key(event) if event.kind == KeyEventKind::Press => match event.code {
+    //                     KeyCode::Esc => {
+    //                         return 10;
+    //                     }
+    //                     KeyCode::Down => {
+    //                         selected_option += 1;
+    //                         if selected_option >= options.len() {
+    //                             selected_option = 0;
+    //                         }
+    //                         break;
+    //                     }
+    //                     KeyCode::Up => {
+    //                         if selected_option == 0 {
+    //                             selected_option = options.len();
+    //                         }
+    //                         selected_option -= 1;
+    //                         break;
+    //                     }
+    //                     KeyCode::Enter => return selected_option,
+    //                     _ => {
+    //                         continue;
+    //                     }
+    //                 },
+    //                 _ => {}
+    //             }
+    //         }
 
-            stdout.queue(crossterm::cursor::MoveTo(0, 5));
-        }
-    }
+    //         stdout.queue(crossterm::cursor::MoveTo(0, 5));
+    //     }
+    // }
     pub fn fetch_latest_menu(&mut self) -> MenuType {
         queue!(
             self.out_handle,
@@ -275,18 +275,34 @@ impl App {
             )
             .unwrap();
             self.out_handle.flush();
-            io::stdin().read_line(&mut inputEpisode);
+            //io::stdin().read_line(&mut inputEpisode);
+
+            //TODO this is dogshit, refactor for your life!
+            //#########################################################################
+            let input = read_line_inter(&mut self.out_handle);
+            if input.is_none() {
+                break;
+            }
             //TODO: maybe add fhd/hd parameters parsing
-            let mut episode = title.player["list"][inputEpisode.trim()]["hls"]["fhd"]
+            let temp = input.unwrap();
+            let args:Vec<&str> = temp.split_whitespace().collect();
+            let mut episode = "";
+            if args.len() == 1{
+                episode = title.player["list"][args[0].trim()]["hls"]["fhd"]
                 .as_str()
                 .expect("error parsing json");
 
+            }
+            else {
+                episode = title.player["list"][args[0].trim()]["hls"][args[1].trim()]
+                .as_str().unwrap();
+                
+            }
+            //###################################################################
             let mut url = format!("{API_PLAYER_CACHE}{episode}");
             self.out_handle.execute(cursor::Hide);
-            let output = Command::new("player/AniPlayer.exe")
-                .arg(url)
-                .output()
-                .expect("player");
+            //let output = Command::new("player/AniPlayer.exe")
+            let output = Command::new("mpv").arg(url).output().expect("player");
             inputEpisode.clear();
             self.out_handle.execute(cursor::MoveTo(0, 5));
         }

@@ -2,6 +2,7 @@ use crate::api::*;
 use crate::app::App;
 use console::colors_enabled_stderr;
 use console::Term;
+use crossterm::event;
 use crossterm::event::KeyCode;
 use crossterm::event::KeyEvent;
 use crossterm::event::KeyEventKind;
@@ -213,5 +214,48 @@ pub fn interactive_menu(
                 continue;
             }
         }
+    }
+}
+pub fn read_line_inter(out_handle: &mut Stdout) -> Option<String> {
+    let mut buffer = String::new();
+    out_handle.execute(cursor::SavePosition);
+    loop {
+        let event = read().unwrap();
+        match event {
+            Event::Key(event) if event.kind == KeyEventKind::Press => match event.code {
+                KeyCode::Esc => {
+                    return None;
+                }
+                KeyCode::Enter => {
+                    return Some(buffer);
+                }
+                KeyCode::Char(c) =>
+                /*if c.is_digit(10)*/
+                {
+                    out_handle.queue(Print(c));
+                    buffer.push(c);
+                }
+                KeyCode::Backspace => {
+                    // queue!(
+                    //     out_handle,
+                    //     cursor::MoveLeft(1),
+                    //     Print(" "),
+                    //     cursor::MoveLeft(1));
+                    buffer.pop();
+                }
+                _ => {
+                    continue;
+                }
+            },
+            _ => {}
+        }
+        queue!(
+            out_handle,
+            cursor::RestorePosition,
+            terminal::Clear(ClearType::UntilNewLine),
+            Print(&buffer),
+        );
+
+        out_handle.flush();
     }
 }
