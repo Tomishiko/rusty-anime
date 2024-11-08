@@ -1,36 +1,30 @@
 <html><head>
-    <script
-  src="https://code.jquery.com/jquery-3.2.1.min.js"
-  integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
-  crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
   <link rel="stylesheet" type="text/css" href="./style.css">
-  <script src="mousetrap.min.js" charset="utf-8"></script>
+  <!-- <script src="player.js"></script> -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
   <style>
 	body {
 	  border: 1px solid #000000;
 	  overflow-y: hidden;
 	}
-    #video{
-	  margin:0;
-	  padding:0;
-	  margin-top:32px;
-	  overflow-y: auto;
-	  width:100%;
-	  padding: 0px;
-	  height: calc(100% - 32px);	  
+	.plyr{
+		display: block;
 	}
 	#titlebar {
 	  display: block;
 	  position: fixed;
-	  height: 32px;
+	  height: 42px;
 	  width: calc(100% - 2px); 
 	  background-color: #000000;
 	  -webkit-app-region: drag;
-	  
+	  z-index: 2;
 	}
-	#text{
+	.text{
 	  margin: 0;
+	  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	  font-size: 12pt;
 	  padding-left:8px;
 	  position: absolute;
 	  top: 50%;
@@ -39,10 +33,19 @@
   </style>
 <body>
   <header id="titleBar">
-  <div id='text'>AniPlayer</div>
+  	<div id='titleText' class="text">AniPlayer</div>
   
   </header>
-  <video id="video"  controls=""></video>
-  <script src="player.js"></script>
-</body>
+  <div class="container">
+	<video id="player" controls crossorigin data-poster="">
+	</video>
+	</div>
+  </body>
+  <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+  <script src="plyrinit.js"></script>
+  <script src="https://cdn.rawgit.com/video-dev/hls.js/18bb552/dist/hls.min.js"></script>
+  <!-- <script
+  src="https://code.jquery.com/jquery-3.2.1.min.js"
+  integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+  crossorigin="anonymous"></script> -->
 </html>

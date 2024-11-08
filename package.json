@@ -2,7 +2,7 @@
   "name": "AniPlayer",
   "version": "1.0.0",
   "description": "electron player",
-  "main": "main.js",
+  "main": "./src/main.js",
   "author": "Tomishiko",
   "build": {
     "productName": "AniPlayer",
@@ -18,7 +18,8 @@
   },
   "scripts": {
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+	"start": "electron ."
   },
   "devDependencies": {
     "electron": "^30.0.6",
