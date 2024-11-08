@@ -1,0 +1,7 @@
+api:
+  url: "https://anilibria.tv/public/api/index.php"
+  player: "https://cache.libria.fun"
+session_id: "123"
+player: "player/AniPlayer.exe"
+#player: "mpv"
+original_names: false

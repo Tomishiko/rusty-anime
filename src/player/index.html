@@ -1,0 +1,48 @@
+<html><head>
+    <script
+  src="https://code.jquery.com/jquery-3.2.1.min.js"
+  integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+  crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <link rel="stylesheet" type="text/css" href="./style.css">
+  <script src="mousetrap.min.js" charset="utf-8"></script>
+  <style>
+	body {
+	  border: 1px solid #000000;
+	  overflow-y: hidden;
+	}
+    #video{
+	  margin:0;
+	  padding:0;
+	  margin-top:32px;
+	  overflow-y: auto;
+	  width:100%;
+	  padding: 0px;
+	  height: calc(100% - 32px);	  
+	}
+	#titlebar {
+	  display: block;
+	  position: fixed;
+	  height: 32px;
+	  width: calc(100% - 2px); 
+	  background-color: #000000;
+	  -webkit-app-region: drag;
+	  
+	}
+	#text{
+	  margin: 0;
+	  padding-left:8px;
+	  position: absolute;
+	  top: 50%;
+	  transform: translateY(-50%);
+	}
+  </style>
+<body>
+  <header id="titleBar">
+  <div id='text'>AniPlayer</div>
+  
+  </header>
+  <video id="video"  controls=""></video>
+  <script src="player.js"></script>
+</body>
+</html>

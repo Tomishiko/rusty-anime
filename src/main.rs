@@ -1,124 +1,120 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+// #![allow(dead_code)]
+// #![allow(unused_variables)]
+// #![allow(unused_imports)]
+mod api;
+mod app;
+mod menu;
+use app::App;
+use app::Config;
+use clap::arg;
+use clap::ArgAction;
+use clap::ArgMatches;
+use clap::Command;
+use crossterm::{cursor, execute, queue, style::Print, terminal, ExecutableCommand};
+use menu::*;
+use serde::de::value;
+use serde::Deserialize;
+use serde::Deserializer;
 use std::env;
+use std::fs;
 use std::io;
 use std::io::Read;
 use std::io::Write;
-use std::option;
-use reqwest;
-use std::thread;
-use std::time::Duration;
-use console::Term;
-use console::Key;
-use console::style;
-use serde::{Deserialize, Serialize};
-use serde_json::{Result, Value};
+use std::panic;
+use std::path::Path;
+fn main() {
+    let exepath = env::current_exe().unwrap();
+    env::set_current_dir(exepath.parent().expect("Exe should have parent dir"));
+    panic::set_hook(Box::new(|x| {
+        let mut file = std::fs::File::create("crashdump").unwrap();
+        file.write_fmt(format_args!("{}", x));
+    }));
 
-//Data types
-#[derive(Serialize,Deserialize)]
-struct Title {
-    names: name,
-    id:i32,
-
-}
-#[derive(Serialize,Deserialize)]
-struct name{
-    ru:String,
-    en:String,
-}
-#[derive(Serialize, Deserialize)]
-struct  Response {
-    list:Vec<Title>
-    
-}
-//##################################################################
-fn main(){
-    // let args: Vec<String> = env::args().collect();
-    // if args.len() != 1{
-    //     parse_arguments(&args);
-    // }
-    let term = Term::stdout();
-    term.hide_cursor();
-
-
-    let init_menu = ["Todays releases","Search release"];
-
-    let selected = menu_draw_loop(0,&term,&init_menu);
-    match selected {
-        0=>{
-            fetch_release_list();
-        },
-        _=>{}
-    }
-    term.read_char();
-}
-
-fn menu_draw_loop(mut selected_option:usize,term:&Term,options:&[&str])->usize{
-    term.clear_screen();
-    loop{
-        for i in 0..options.len(){
-            println!("   {}",options[i]);
+    let config: Config;
+    match fs::read_to_string("./config.yaml") {
+        Ok(val) => {
+            let deserializer = serde_yaml::Deserializer::from_str(&val);
+            match Config::deserialize(deserializer) {
+                Ok(value) => config = value,
+                Err(err) => {
+                    println!("Bad config file format!\n{}", err);
+                    io::stdin().read(&mut [0u8]);
+                    return;
+                }
+            };
         }
-        term.move_cursor_to(0, selected_option);
-        //dbg!(selected_option);
-        term.write_line(">>");
-        match term.read_key()
-        {
-            Ok(key)=> match key{
-                Key::ArrowDown=>{ 
-                        selected_option+=1;
-                        if selected_option >= options.len(){
-                            selected_option=0;
-                        }
-                    },
-                Key::ArrowUp=>{
-                    if selected_option == 0{
-                        selected_option=options.len();
-                    }
-                    selected_option-=1;
-                    },
-                Key::Escape => { break;},
-                Key::Enter => { return selected_option},
-                _ =>selected_option = 0,
-            },
-            Err(_)=>break,
+        Err(err) => {
+            println!(
+                "Error trying to read config.yaml: {}\nCheck if the file is present",
+                err
+            );
+            io::stdin().read(&mut [0u8]);
+            return;
         }
-        term.move_cursor_to(0, 0);
-    }
-    return selected_option;
-}
-
-fn navigator(){
-
-}
-fn init_menu()->u8{
-    println!("1. Todays releases\n2. Search\nEnter desired number...");
-    let mut input = [0u8];
-    match io::stdin().read_exact(&mut input){
-        Ok(res) => res,
-        Err(_) => println!("Wrong menu item"),
     };
-    return input[0];
+    // clap cli args setup
+    let matches = Command::new("AnimeR")
+        .version("1.0")
+        .about("about")
+        .next_line_help(true)
+        .arg(arg!(list: -l  "list latest"))
+        .arg(arg!(search: -s  <title_name> "search by title name").conflicts_with("list"))
+        .get_matches();
+
+    // Term setup
+    terminal::enable_raw_mode();
+    let mut stdout = io::stdout();
+    execute!(
+        stdout,
+        terminal::EnterAlternateScreen,
+        cursor::MoveTo(0, 0),
+        terminal::DisableLineWrap
+    );
+
+    // app state
+    let mut app = App::new(io::stdout(), config, exepath);
+    app.credentials();
+
+    // cli args action branching
+    if env::args().len() > 1 {
+        parse_args(&matches, &mut app);
+    // main loop
+    } else {
+        let mut current: MenuNode = menu_provider(MenuType::Main);
+        loop {
+            let next = (current.action)(&mut app);
+            if matches!(next, MenuType::Back) {
+                if app.menu_stack.len() == 0 {
+                    break;
+                }
+
+                current = app.menu_stack.pop().expect("msg");
+            } else {
+                app.menu_stack.push(current);
+                current = menu_provider(next);
+            }
+        }
+    }
+
+    //
+    execute!(
+        stdout,
+        terminal::EnableLineWrap,
+        terminal::LeaveAlternateScreen
+    );
+    terminal::disable_raw_mode();
 }
-fn search_logic(){
-    
-}
-fn parse_arguments(args: &Vec<String>) {
-    
-}
-fn fetch_release_list()->Vec<Title>{
-    println!("Fetching releases");
-    let resp = 
-        reqwest::blocking::get("https://api.anilibria.tv/v3/title/updates?filter=names,id&since=1715094161&limit=-1")
-            .expect("msg").text().expect("msg");
-    
-    let mut jsonVal: Value = serde_json::from_str(resp.as_str()).expect("msg");
-    
-    let titles:Vec<Title> = serde_json::from_value(jsonVal["list"].take()).expect("parsing error");
-    // for i in 0..titles.len(){
-    //     println!("{}. {}/{}",i,titles[i].names.ru,titles[i].names.en);
-    // }
-    return titles;
-    
+fn parse_args(matches: &ArgMatches, app: &mut App) {
+    if matches.get_flag("list") {
+        app.fetch_latest_menu();
+    } else {
+        for id in matches.ids() {
+            match id.as_str() {
+                "search" => {
+                    app.search_logic(matches.get_one("search").unwrap());
+                }
+                _ => {}
+            };
+        }
+    }
 }

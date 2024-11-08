@@ -7,8 +7,37 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/<executable file>",
+            "name": "Debug executable 'AnimeGo'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=AnimeGo",
+                    "--package=AnimeGo"
+                ],
+                "filter": {
+                    "name": "AnimeGo",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'AnimeGo'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=AnimeGo",
+                    "--package=AnimeGo"
+                ],
+                "filter": {
+                    "name": "AnimeGo",
+                    "kind": "bin"
+                }
+            },
             "args": [],
             "cwd": "${workspaceFolder}"
         }
