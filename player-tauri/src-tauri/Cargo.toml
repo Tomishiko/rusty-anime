@@ -1,0 +1,28 @@
+[package]
+name = "rustyplayer"
+version = "0.2.0"
+description = "Custom player for rusty-anime"
+authors = ["Tomishiko"]
+edition = "2021"
+
+
+[lib]
+name = "aniplayer_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[profile.dev]
+debug = 1
+
+[profile.dev.package."*"]
+debug = false
+
+[profile.release]
+debug = false
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

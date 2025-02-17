@@ -4,30 +4,28 @@
 mod api;
 mod app;
 mod menu;
-use app::App;
-use app::Config;
-use clap::arg;
-use clap::ArgAction;
-use clap::ArgMatches;
-use clap::Command;
-use crossterm::{cursor, execute, queue, style::Print, terminal, ExecutableCommand};
+use app::{App, Config};
+use clap::{arg, ArgMatches, Command};
+use crossterm::{execute, terminal};
 use menu::*;
-use serde::de::value;
 use serde::Deserialize;
-use serde::Deserializer;
-use std::env;
-use std::fs;
-use std::io;
-use std::io::Read;
-use std::io::Write;
-use std::panic;
-use std::path::Path;
+use std::{
+    env, fs,
+    io::{self, Read, Write},
+    panic,
+};
+use tui::backend::CrosstermBackend;
+use tui::Terminal;
 fn main() {
     let exepath = env::current_exe().unwrap();
-    env::set_current_dir(exepath.parent().expect("Exe should have parent dir"));
+    env::set_current_dir(exepath.parent().expect("Exe should have parent dir"))
+        .expect("Unable to set current dir");
+
+    // Panic hook to log errors in case of unexpected panic
     panic::set_hook(Box::new(|x| {
-        let mut file = std::fs::File::create("crashdump").unwrap();
-        file.write_fmt(format_args!("{}", x));
+        let mut file = std::fs::File::create("errorlog.txt").expect("Unable to create log file");
+        file.write_fmt(format_args!("{}", x))
+            .expect("Unable to wrtie into log file");
     }));
 
     let config: Config;
@@ -38,7 +36,7 @@ fn main() {
                 Ok(value) => config = value,
                 Err(err) => {
                     println!("Bad config file format!\n{}", err);
-                    io::stdin().read(&mut [0u8]);
+                    io::stdin().read(&mut [0u8]).expect("Can not read stdin");
                     return;
                 }
             };
@@ -48,7 +46,7 @@ fn main() {
                 "Error trying to read config.yaml: {}\nCheck if the file is present",
                 err
             );
-            io::stdin().read(&mut [0u8]);
+            io::stdin().read(&mut [0u8]).expect("Can not read stdin");
             return;
         }
     };
@@ -61,19 +59,15 @@ fn main() {
         .arg(arg!(search: -s  <title_name> "search by title name").conflicts_with("list"))
         .get_matches();
 
-    // Term setup
-    terminal::enable_raw_mode();
     let mut stdout = io::stdout();
-    execute!(
-        stdout,
-        terminal::EnterAlternateScreen,
-        cursor::MoveTo(0, 0),
-        terminal::DisableLineWrap
-    );
+    // Term setup
+    crossterm::terminal::enable_raw_mode().expect("Can't enable raw mode");
+    execute!(stdout, terminal::EnterAlternateScreen,).expect("Can not write to stdout");
 
+    let backend = CrosstermBackend::new(stdout);
+    let terminal = Terminal::new(backend).expect("Unexpected error happened");
     // app state
-    let mut app = App::new(io::stdout(), config, exepath);
-    app.credentials();
+    let mut app = App::new(io::stdout(), config, exepath, terminal);
 
     // cli args action branching
     if env::args().len() > 1 {
@@ -95,14 +89,16 @@ fn main() {
             }
         }
     }
+    if app.proc.is_some() {
+        app.proc
+            .unwrap()
+            .kill()
+            .expect("Unable to kill child process");
+    }
 
-    //
-    execute!(
-        stdout,
-        terminal::EnableLineWrap,
-        terminal::LeaveAlternateScreen
-    );
-    terminal::disable_raw_mode();
+    execute!(app.terminal.backend_mut(), terminal::LeaveAlternateScreen)
+        .expect("Unable to leave alternate screen");
+    crossterm::terminal::disable_raw_mode().expect("Unable to disable raw mode");
 }
 fn parse_args(matches: &ArgMatches, app: &mut App) {
     if matches.get_flag("list") {

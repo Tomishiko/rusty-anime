@@ -1,0 +1,32 @@
+<html>
+
+<head>
+
+	<link rel="stylesheet" type="text/css" href="./style.css">
+	<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+
+	<style>
+		body {
+			border: 1px solid #000000;
+			overflow-y: hidden;
+		}
+
+		.plyr {
+			display: block;
+		}
+	</style>
+
+<body>
+	<div id="titleBar">
+		<div id='titleText' class="text">AniPlayer</div>
+	</div>
+	<div class="container">
+		<video id="player" controls crossorigin data-poster="">
+		</video>
+	</div>
+</body>
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+<script type="module" src="/main.js" defer></script>
+<script src="https://cdn.rawgit.com/video-dev/hls.js/18bb552/dist/hls.min.js"></script>
+
+</html>

@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'AnimeGo'",
+            "name": "Debug executable'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=AnimeGo",
-                    "--package=AnimeGo"
+                    "--bin=rusty-anime",
+                    "--package=rusty-anime"
                 ],
                 "filter": {
-                    "name": "AnimeGo",
+                    "name": "rusty-anime",
                     "kind": "bin"
                 }
             },
@@ -41,5 +41,6 @@
             "args": [],
             "cwd": "${workspaceFolder}"
         }
+        
     ]
 }

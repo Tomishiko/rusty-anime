@@ -1,0 +1,83 @@
+* {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  vertical-align: baseline;
+}
+
+html {
+  box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: #000000;
+  color: #FFF;
+}
+
+.plyr__controls:focus {
+  outline: none;
+}
+
+.container {
+
+  --plyr-color-main: #ff0000;
+  --plyr-video-controls-background: linear-gradient(to top, #0000007f, 60%, #00000000);
+  --plyr-menu-background: #000000;
+  --plyr-menu-color: #ffffffaa;
+}
+
+.container {
+  outline: none;
+  z-index: 1;
+}
+
+.hidden {
+  opacity: 0;
+  transform: translateY(-100%);
+}
+
+.text {
+  margin: 0;
+  margin-left: 16;
+  margin-top: 4;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12pt;
+  padding-left: 8px;
+  align-self: self-start;
+  position: absolute;
+}
+
+#titleBar {
+  background: var(--plyr-video-controls-background, linear-gradient(#000000dd, #00000000));
+  transition: opacity .4s ease-in-out, transform .4s ease-in-out;
+  position: absolute;
+  height: 46px;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 100%;
+}
+
+h1 {
+  margin: 0 0 10px 0;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+p {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}

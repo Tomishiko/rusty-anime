@@ -1,0 +1,25 @@
+* {margin: 0; padding: 0; border: 0; vertical-align: baseline;}
+html {box-sizing: border-box;}
+*, *:before, *:after {box-sizing: inherit;}
+html, body {height: 100%; margin: 0;}
+
+body {
+  font-family: "Segoe UI", sans-serif;
+  background: #000000;
+  color: #FFF;
+}
+.plyr__controls:focus{
+  outline: none;
+}
+.container{
+
+  --plyr-color-main: #ff0000;
+  --plyr-video-controls-background: linear-gradient(to top,#0000007f,60%,#00000000);
+  --plyr-menu-background: #000000;
+  --plyr-menu-color: #ffffffaa;
+}
+.container:focus{
+  outline: none;
+}
+h1 {margin: 0 0 10px 0; font-weight: 600; line-height: 1.2;}
+p {margin-top: 10px; color: rgba(255,255,255,0.4);}
