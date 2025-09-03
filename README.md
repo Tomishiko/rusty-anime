@@ -1,5 +1,5 @@
 # AnimeGo
-CLI client for  [AnilibriaTV](https:://anilibria.tv) website.
+CLI client for  [AnyLiberty](https://aniliberty.top) website.
 ## Usage
 Launching from the exe file which will start interactive session.
 ### Key map
@@ -8,5 +8,5 @@ Launching from the exe file which will start interactive session.
 - Esc: go back
 - [0-9]: go to number
 
-You can launch from terminal with arguments "AnimeGo <-l> <-s> <-h>", type "AnimeGo -h" for help and detailed args explantion.
-Different players support will be added in the future, basically any player supporting .m3u8 hls will do, currently only my custom player and mpv works for sure (mpv dont show intro and outro skips though).
+You can launch from terminal with arguments <-l> <-s> <-h>.
+Different players support will be added in the future, basically any player supporting .m3u8 hls will do, currently only my custom player and mpv works for sure (mpv dont show intro and outro skips though. Players can be changed in config file).
