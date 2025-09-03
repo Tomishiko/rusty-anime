@@ -1,4 +1,4 @@
-# AnimeGo
+# rusty-anime
 CLI client for  [AnyLiberty](https://aniliberty.top) website.
 ## Usage
 Launching from the exe file which will start interactive session.
